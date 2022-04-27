@@ -1,5 +1,4 @@
 from re import template
-from typing import List
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views.generic import (
@@ -13,7 +12,7 @@ from braces.views import LoginRequiredMixin, UserPassesTestMixin
 from allauth.account.models import EmailAddress
 from allauth.account.views import PasswordChangeView
 from coplate.models import Review, User
-from coplate.forms import ReviewForm
+from coplate.forms import ReviewForm, ProfileForm
 from coplate.functions import confirmation_required_redirect
 
 # Create your views here.
@@ -60,7 +59,7 @@ class ReviewUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_success_url(self):
         return reverse("review-detail", kwargs={"review_id": self.object.id})
-    
+
     def test_func(self, user):
         review = self.get_object()
         return review.author == user
@@ -75,7 +74,7 @@ class ReviewDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
     def get_success_url(self):
         return reverse("index")
-    
+
     def test_func(self, user):
         review = self.get_object()
         return review.author == user
@@ -104,13 +103,25 @@ class UserReviewListView(ListView):
 
     def get_queryset(self):
         user_id = self.kwargs.get("user_id")
-        return Review.objects.filter(author__id=user_id).order_by("dt_created")
+        return Review.objects.filter(author__id=user_id).order_by("-dt_created")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        get_object_or_404(User, id=self.kwargs.get("user_id"))
         context["profile_user"] = get_object_or_404(User, id=self.kwargs.get("user_id"))
         return context
+
+
+class ProfileSetView(LoginRequiredMixin, UpdateView):
+    model = User
+    form_class = ProfileForm
+    template_name = "coplate/profile_set_form.html"
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def get_success_url(self):
+        return reverse("index")
+
 
 class CustomPasswordChangeView(PasswordChangeView):
     def get_success_url(self):
